@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>RGB 3D Clusters (Three.js)</title>
+  <style>
+    body {{ margin: 0; overflow: hidden; }}
+    canvas {{ display: block; }}
+    #info {{
+      position: absolute; top: 10px; left: 10px; color: white; font-family: sans-serif;
+      background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 5px;
+    }}
+  </style>
+</head>
+<body>
+  <div id="info">読み込み中...</div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const imageName = params.get("img");
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 1000);
+    camera.position.set(300, 300, 300);
+
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    const axesHelper = new THREE.AxesHelper(255);
+    scene.add(axesHelper);
+
+    fetch("cluster_data_for_threejs.json")
+      .then(res => res.json())
+      .then(data => {{
+        const entry = data.find(d => d.image === imageName);
+        if (!entry) {{
+          document.getElementById("info").innerText = "該当画像データが見つかりません";
+          return;
+        }}
+        document.getElementById("info").innerText = "Image: " + imageName;
+
+        entry.clusters.forEach(c => {{
+          const geometry = new THREE.SphereGeometry(Math.cbrt(c.count) * 1.2, 16, 16);
+          const material = new THREE.MeshBasicMaterial({{ color: c.color }});
+          const sphere = new THREE.Mesh(geometry, material);
+          sphere.position.set(c.r, c.g, c.b);
+          scene.add(sphere);
+        }});
+      }});
+
+    function animate() {{
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }}
+    animate();
+
+    window.addEventListener("resize", () => {{
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }});
+  </script>
+</body>
+</html>
